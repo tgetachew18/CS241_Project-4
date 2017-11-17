@@ -1,3 +1,4 @@
+
 # inference.py
 # ------------
 # Licensing Information:  You are free to use or extend these projects for
@@ -431,7 +432,16 @@ class JointParticleFilter:
         Storing your particles as a Counter (where there could be an associated
         weight with each position) is incorrect and may produce errors.
         """
+        
         "*** YOUR CODE HERE ***"
+        pos_times_pos = map(tuple,itertools.product(self.legalPositions, repeat=self.numGhosts))
+        random.shuffle(pos_times_pos)
+        self.particles = []
+        for i in range(self.numParticles):
+			self.particles.append( pos_times_pos[i % len(pos_times_pos)] )
+			
+        
+        
 
     def addGhostAgent(self, agent):
         """
@@ -477,8 +487,28 @@ class JointParticleFilter:
         if len(noisyDistances) < self.numGhosts:
             return
         emissionModels = [busters.getObservationDistribution(dist) for dist in noisyDistances]
-
+		
         "*** YOUR CODE HERE ***"
+        w = util.Counter()
+        for p_i in range(self.numParticles):
+			particle, p = self.particles[p_i], 1.0
+			for i_g in range(self.numGhosts):
+				if noisyDistances[i_g] is None:
+					particle = self.getParticleWithGhostInJail(particle, i_g)
+					continue
+				p *= emissionModels[i_g][util.manhattanDistance(particle[i_g], pacmanPosition)]
+			w[particle] += p
+			
+        if w.totalCount() == 0:
+            self.initializeParticles()            
+        else:
+            w.normalize()
+            self.particles = [util.sample(w) for rep in range(self.numParticles)]
+			
+			
+			
+
+        
 
     def getParticleWithGhostInJail(self, particle, ghostIndex):
         """
@@ -546,7 +576,11 @@ class JointParticleFilter:
 
     def getBeliefDistribution(self):
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        distr = util.Counter()
+        for particle in self.particles:
+			distr[particle] += 1.0
+        distr.normalize()
+        return distr
 
 # One JointInference module is shared globally across instances of MarginalInference
 jointInference = JointParticleFilter()
